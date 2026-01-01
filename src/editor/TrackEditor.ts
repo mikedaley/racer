@@ -10,7 +10,7 @@ import {
   loadTrackData,
 } from "../data/TrackData";
 import { Track } from "../core/Track";
-import { Renderer } from "../core/Renderer";
+import { WebGLRenderer } from "../core/WebGLRenderer";
 
 // Import from sprite registry - single source of truth
 import {
@@ -93,7 +93,7 @@ export class Editor {
 
   // 3D Preview
   private preview3dCanvas: HTMLCanvasElement | null = null;
-  private preview3dRenderer: Renderer | null = null;
+  private preview3dRenderer: WebGLRenderer | null = null;
   private preview3dTrack: Track | null = null;
   private preview3dPosition: number = 0;
   private preview3dAnimating: boolean = false;
@@ -170,7 +170,7 @@ export class Editor {
     }
 
     // Create renderer for preview (no auto-resize)
-    this.preview3dRenderer = new Renderer(this.preview3dCanvas, false);
+    this.preview3dRenderer = new WebGLRenderer(this.preview3dCanvas, false);
 
     // Reduce draw distance for better preview performance
     this.preview3dRenderer.drawDistance = 100;

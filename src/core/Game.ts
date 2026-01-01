@@ -1,5 +1,5 @@
 import { Track } from "./Track";
-import { Renderer } from "./Renderer";
+import { WebGLRenderer } from "./WebGLRenderer";
 import { Input } from "./Input";
 import { Player } from "../types/game";
 import { TrackData } from "../data/TrackData";
@@ -34,7 +34,7 @@ function loadPhysicsSettings(): PhysicsSettings | null {
 
 export class Game {
   private track: Track;
-  private renderer: Renderer;
+  private renderer: WebGLRenderer;
   private input: Input;
   private onExit: (() => void) | null = null;
 
@@ -67,7 +67,7 @@ export class Game {
     onExit?: () => void,
   ) {
     this.track = new Track(trackData);
-    this.renderer = new Renderer(canvas);
+    this.renderer = new WebGLRenderer(canvas);
     this.input = new Input();
     this.onExit = onExit || null;
 
@@ -395,8 +395,8 @@ export class Game {
   }
 
   private renderHUD(): void {
-    const canvas = this.renderer["canvas"];
-    const ctx = this.renderer["ctx"];
+    // Access the display context through the renderer's private property
+    const ctx = this.renderer["displayCtx"] as CanvasRenderingContext2D;
 
     ctx.fillStyle = "#ffffff";
     ctx.font = "20px monospace";
