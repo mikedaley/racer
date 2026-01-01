@@ -139,6 +139,8 @@ export class WebGLRenderer {
 
   // Buffers (initialized in create*Buffers methods called from constructor)
   private skyVAO!: WebGLVertexArrayObject;
+  private skyPositionBuffer!: WebGLBuffer;
+  private skyUvBuffer!: WebGLBuffer;
   private roadVAO!: WebGLVertexArrayObject;
   private spriteVAO!: WebGLVertexArrayObject;
   private roadPositionBuffer!: WebGLBuffer;
@@ -290,36 +292,22 @@ export class WebGLRenderer {
   private createSkyBuffers(): void {
     const gl = this.gl;
 
-    // Sky quad from top (y=0) to horizon (y=height/2)
-    // Using screen-space coordinates with orthographic projection
-    const horizonY = this.retroHeight / 2;
+    // Pre-allocate buffers for dynamic sky quad (updated each frame based on horizon)
+    const positions = new Float32Array(6 * 2); // 6 vertices, 2 components
+    const uvs = new Float32Array(6 * 2);
 
-    // Positions: top-left, top-right, bottom-left, bottom-left, top-right, bottom-right
-    const positions = new Float32Array([
-      0,
-      0,
-      this.retroWidth,
-      0,
-      0,
-      horizonY,
-      0,
-      horizonY,
-      this.retroWidth,
-      0,
-      this.retroWidth,
-      horizonY,
-    ]);
-
-    // UVs: 0 at top, 1 at horizon
-    const uvs = new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]);
-
-    const posBuffer = createBuffer(gl, positions);
-    const uvBuffer = createBuffer(gl, uvs);
+    this.skyPositionBuffer = createBuffer(
+      gl,
+      positions,
+      gl.ARRAY_BUFFER,
+      gl.DYNAMIC_DRAW,
+    );
+    this.skyUvBuffer = createBuffer(gl, uvs, gl.ARRAY_BUFFER, gl.DYNAMIC_DRAW);
 
     this.skyVAO = gl.createVertexArray()!;
     gl.bindVertexArray(this.skyVAO);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.skyPositionBuffer);
     gl.enableVertexAttribArray(this.skyAttribs.a_position);
     gl.vertexAttribPointer(
       this.skyAttribs.a_position,
@@ -330,7 +318,7 @@ export class WebGLRenderer {
       0,
     );
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.skyUvBuffer);
     gl.enableVertexAttribArray(this.skyAttribs.a_uv);
     gl.vertexAttribPointer(this.skyAttribs.a_uv, 2, gl.FLOAT, false, 0, 0);
 
@@ -554,10 +542,7 @@ export class WebGLRenderer {
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    // 1. Render sky
-    this.renderSky();
-
-    // 2. Build road geometry and render
+    // Build road geometry first to determine horizon
     const baseSegment = track.getSegment(position);
     const basePercent = (position % track.segmentLength) / track.segmentLength;
 
@@ -610,6 +595,9 @@ export class WebGLRenderer {
       maxy = segment.p1.screen.y;
     }
 
+    // Render sky from top to visible horizon (maxy is the topmost road point)
+    this.renderSky(maxy);
+
     // Upload and render road
     this.renderRoad(roadVertexCount);
 
@@ -637,8 +625,27 @@ export class WebGLRenderer {
   // SKY RENDERING
   // ---------------------------------------------------------------------------
 
-  private renderSky(): void {
+  private renderSky(horizonY: number): void {
     const gl = this.gl;
+
+    // Build dynamic sky quad from top (y=0) to visible horizon
+    const positions = new Float32Array([
+      0,
+      0,
+      this.retroWidth,
+      0,
+      0,
+      horizonY,
+      0,
+      horizonY,
+      this.retroWidth,
+      0,
+      this.retroWidth,
+      horizonY,
+    ]);
+
+    // UVs: 0 at top, 1 at horizon
+    const uvs = new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]);
 
     gl.useProgram(this.skyProgram);
     gl.uniformMatrix4fv(
@@ -646,7 +653,16 @@ export class WebGLRenderer {
       false,
       this.projectionMatrix,
     );
+
+    // Update buffers with dynamic positions
     gl.bindVertexArray(this.skyVAO);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.skyPositionBuffer);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, positions);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.skyUvBuffer);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, uvs);
+
     gl.drawArrays(gl.TRIANGLES, 0, 6);
     gl.bindVertexArray(null);
   }
