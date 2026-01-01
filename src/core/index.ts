@@ -4,6 +4,6 @@
  */
 
 export { Game } from "./Game";
-export { Renderer } from "./Renderer";
+export { WebGLRenderer } from "./WebGLRenderer";
 export { Track } from "./Track";
 export { Input } from "./Input";
