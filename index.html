@@ -1,0 +1,1384 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Race</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #1a1a2e;
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    sans-serif;
+                color: #fff;
+                min-height: 100vh;
+                overflow: hidden;
+            }
+
+            /* Game Screen */
+            #game-screen {
+                display: none;
+                width: 100vw;
+                height: 100vh;
+            }
+            #game-screen.active {
+                display: block;
+            }
+            #game {
+                display: block;
+                width: 100%;
+                height: 100%;
+            }
+
+            /* Debug Panel */
+            #debug-panel {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                width: 280px;
+                background: rgba(22, 33, 62, 0.95);
+                border: 1px solid #0f3460;
+                border-radius: 8px;
+                font-size: 12px;
+                z-index: 100;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            }
+            .debug-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 8px 12px;
+                background: #0f3460;
+                border-radius: 7px 7px 0 0;
+            }
+            .debug-header span {
+                color: #e94560;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+            .debug-header button {
+                background: none;
+                border: none;
+                color: #fff;
+                font-size: 16px;
+                cursor: pointer;
+                padding: 0 5px;
+            }
+            .debug-content {
+                padding: 10px;
+            }
+            .debug-content.collapsed {
+                display: none;
+            }
+            .debug-row {
+                margin-bottom: 10px;
+            }
+            .debug-row label {
+                display: block;
+                color: #888;
+                margin-bottom: 3px;
+            }
+            .debug-row input[type="range"] {
+                width: calc(100% - 50px);
+                vertical-align: middle;
+            }
+            .debug-row span {
+                display: inline-block;
+                width: 45px;
+                text-align: right;
+                color: #e94560;
+                font-family: monospace;
+            }
+
+            /* Editor Screen */
+            #editor-screen {
+                display: none;
+                width: 100vw;
+                height: 100vh;
+            }
+            #editor-screen.active {
+                display: grid;
+                grid-template-columns: 280px 1fr 280px;
+                grid-template-rows: 1fr auto;
+            }
+
+            /* Left Panel - Track Pieces */
+            #pieces-panel {
+                background: #16213e;
+                padding: 15px;
+                overflow-y: auto;
+                border-right: 1px solid #0f3460;
+            }
+            .panel-title {
+                font-size: 14px;
+                font-weight: 600;
+                margin-bottom: 10px;
+                color: #e94560;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+            .piece-item {
+                background: #0f3460;
+                padding: 10px;
+                margin-bottom: 8px;
+                border-radius: 6px;
+                cursor: pointer;
+                border: 2px solid transparent;
+                transition: all 0.2s;
+            }
+            .piece-item:hover {
+                background: #1a4a7a;
+            }
+            .piece-item.selected {
+                border-color: #e94560;
+            }
+            .piece-type {
+                font-weight: 600;
+                font-size: 13px;
+                text-transform: capitalize;
+            }
+            .piece-info {
+                font-size: 11px;
+                color: #888;
+                margin-top: 3px;
+            }
+            .piece-actions {
+                display: flex;
+                gap: 5px;
+                margin-top: 8px;
+            }
+            .piece-actions button {
+                flex: 1;
+                padding: 4px 8px;
+                font-size: 11px;
+                background: #e94560;
+                color: #fff;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            .piece-actions button:hover {
+                background: #ff6b6b;
+            }
+            .piece-actions button.secondary {
+                background: #555;
+            }
+            .piece-actions button.secondary:hover {
+                background: #777;
+            }
+            #add-piece-btn {
+                width: 100%;
+                padding: 10px;
+                margin-top: 10px;
+                background: #e94560;
+                color: #fff;
+                border: none;
+                border-radius: 6px;
+                font-size: 14px;
+                cursor: pointer;
+            }
+            #add-piece-btn:hover {
+                background: #ff6b6b;
+            }
+
+            /* Center - Preview (Split View) */
+            #preview-panel {
+                background: #0f0f23;
+                position: relative;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+
+            /* Top-down track view */
+            #preview-top-container {
+                flex: 1;
+                position: relative;
+                border-bottom: 2px solid #0f3460;
+            }
+            #preview-canvas {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                cursor: grab;
+            }
+            #preview-canvas:active {
+                cursor: grabbing;
+            }
+
+            /* Side elevation profile */
+            #preview-elevation-container {
+                height: 150px;
+                position: relative;
+                background: #0a0a1a;
+            }
+            #elevation-canvas {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+            }
+            #elevation-label {
+                position: absolute;
+                top: 5px;
+                left: 10px;
+                font-size: 10px;
+                color: #666;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+            #zoom-controls {
+                position: absolute;
+                bottom: 15px;
+                right: 15px;
+                display: flex;
+                gap: 5px;
+                z-index: 10;
+            }
+            .zoom-btn {
+                width: 36px;
+                height: 36px;
+                background: #16213e;
+                border: 1px solid #0f3460;
+                color: #fff;
+                font-size: 20px;
+                border-radius: 6px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .zoom-btn:hover {
+                background: #1a4a7a;
+            }
+            #zoom-level {
+                background: #16213e;
+                border: 1px solid #0f3460;
+                color: #888;
+                padding: 0 12px;
+                border-radius: 6px;
+                font-size: 12px;
+                display: flex;
+                align-items: center;
+            }
+
+            /* 3D Preview Window */
+            #preview-3d-container {
+                position: absolute;
+                bottom: 60px;
+                left: 15px;
+                width: 480px;
+                height: 300px;
+                background: #000;
+                border: 2px solid #0f3460;
+                border-radius: 8px;
+                overflow: hidden;
+                z-index: 20;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            }
+            #preview-3d-header {
+                background: #16213e;
+                padding: 6px 10px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px solid #0f3460;
+            }
+            #preview-3d-header span {
+                font-size: 11px;
+                color: #e94560;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+            #preview-3d-canvas {
+                width: 100%;
+                height: calc(100% - 28px);
+                display: block;
+            }
+            #preview-3d-controls {
+                position: absolute;
+                bottom: 5px;
+                left: 50%;
+                transform: translateX(-50%);
+                display: flex;
+                gap: 8px;
+                z-index: 21;
+            }
+            .preview-3d-btn {
+                width: 32px;
+                height: 32px;
+                background: rgba(22, 33, 62, 0.9);
+                border: 1px solid #0f3460;
+                color: #fff;
+                font-size: 16px;
+                border-radius: 4px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .preview-3d-btn:hover {
+                background: #1a4a7a;
+            }
+            .preview-3d-btn:active {
+                background: #e94560;
+            }
+            #preview-3d-position {
+                background: rgba(22, 33, 62, 0.9);
+                border: 1px solid #0f3460;
+                color: #888;
+                padding: 0 10px;
+                border-radius: 4px;
+                font-size: 11px;
+                display: flex;
+                align-items: center;
+            }
+
+            /* Right Panel - Properties */
+            #properties-panel {
+                background: #16213e;
+                padding: 15px;
+                overflow-y: auto;
+                border-left: 1px solid #0f3460;
+            }
+            .property-group {
+                margin-bottom: 20px;
+            }
+            .property-label {
+                font-size: 12px;
+                color: #888;
+                margin-bottom: 5px;
+            }
+            .property-input {
+                width: 100%;
+                padding: 8px;
+                background: #0f3460;
+                border: 1px solid #1a4a7a;
+                border-radius: 4px;
+                color: #fff;
+                font-size: 14px;
+            }
+            .property-input:focus {
+                outline: none;
+                border-color: #e94560;
+            }
+            .property-slider {
+                width: 100%;
+                margin-top: 5px;
+            }
+            .property-value {
+                text-align: right;
+                font-size: 12px;
+                color: #e94560;
+            }
+
+            /* Sprite Section */
+            .sprite-section {
+                background: #0a1628;
+                border-radius: 6px;
+                padding: 10px;
+                margin-top: 10px;
+            }
+            .sprite-category {
+                margin-bottom: 12px;
+            }
+            .sprite-category-title {
+                font-size: 10px;
+                color: #666;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 6px;
+                padding-bottom: 4px;
+                border-bottom: 1px solid #1a4a7a;
+            }
+            .sprite-palette {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 4px;
+            }
+            .sprite-btn {
+                padding: 6px 2px;
+                font-size: 9px;
+                background: #0f3460;
+                color: #aaa;
+                border: 2px solid transparent;
+                border-radius: 4px;
+                cursor: pointer;
+                text-align: center;
+                transition: all 0.15s;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 2px;
+            }
+            .sprite-btn .sprite-icon {
+                width: 24px;
+                height: 24px;
+                object-fit: contain;
+            }
+            .sprite-btn:hover {
+                background: #1a4a7a;
+                color: #fff;
+                transform: scale(1.05);
+            }
+            .sprite-btn.selected {
+                border-color: #e94560;
+                background: #1a4a7a;
+                color: #fff;
+            }
+            .sprite-placement-mode {
+                background: #10ac84;
+                color: #fff;
+                padding: 8px;
+                border-radius: 4px;
+                text-align: center;
+                font-size: 11px;
+                margin-bottom: 10px;
+                animation: pulse 1.5s infinite;
+            }
+            @keyframes pulse {
+                0%,
+                100% {
+                    opacity: 1;
+                }
+                50% {
+                    opacity: 0.7;
+                }
+            }
+            .sprite-offset-preview {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin-top: 5px;
+            }
+            .offset-visual {
+                flex: 1;
+                height: 20px;
+                background: #0f3460;
+                border-radius: 3px;
+                position: relative;
+            }
+            .offset-road {
+                position: absolute;
+                left: 25%;
+                right: 25%;
+                top: 0;
+                bottom: 0;
+                background: #444;
+            }
+            .offset-marker {
+                position: absolute;
+                width: 8px;
+                height: 20px;
+                background: #10ac84;
+                border-radius: 2px;
+                top: 0;
+                transform: translateX(-50%);
+                transition: left 0.1s;
+            }
+
+            /* Placed Sprites List */
+            .sprite-list {
+                margin-top: 12px;
+                max-height: 150px;
+                overflow-y: auto;
+            }
+            .sprite-list-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 6px;
+            }
+            .sprite-count {
+                font-size: 11px;
+                color: #10ac84;
+            }
+            .sprite-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 6px 8px;
+                background: #0f3460;
+                margin-bottom: 3px;
+                border-radius: 4px;
+                font-size: 11px;
+                transition: background 0.15s;
+                cursor: pointer;
+            }
+            .sprite-item:hover {
+                background: #1a4a7a;
+            }
+            .sprite-item.selected {
+                background: #1a4a7a;
+                border: 2px solid #10ac84;
+            }
+
+            /* Selected sprite editor */
+            .sprite-editor {
+                background: #0a1628;
+                border: 2px solid #10ac84;
+                border-radius: 6px;
+                padding: 12px;
+                margin-bottom: 15px;
+            }
+            .sprite-editor-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+            }
+            .sprite-editor-title {
+                font-size: 12px;
+                color: #10ac84;
+                font-weight: 600;
+            }
+            .sprite-editor-close {
+                background: transparent;
+                border: none;
+                color: #888;
+                font-size: 16px;
+                cursor: pointer;
+            }
+            .sprite-editor-close:hover {
+                color: #e94560;
+            }
+            .sprite-editor-info {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 12px;
+                padding: 8px;
+                background: #0f3460;
+                border-radius: 4px;
+            }
+            .sprite-editor-icon {
+                font-size: 24px;
+            }
+            .sprite-editor-name {
+                font-size: 14px;
+                font-weight: 500;
+            }
+            .sprite-editor-segment {
+                font-size: 11px;
+                color: #888;
+            }
+            .sprite-editor .property-group {
+                margin-bottom: 12px;
+            }
+            .sprite-item-info {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .sprite-item-icon {
+                width: 20px;
+                height: 20px;
+                object-fit: contain;
+            }
+            .sprite-item button {
+                background: transparent;
+                border: 1px solid #e94560;
+                color: #e94560;
+                padding: 2px 8px;
+                border-radius: 3px;
+                cursor: pointer;
+                font-size: 10px;
+                transition: all 0.15s;
+            }
+            .sprite-item button:hover {
+                background: #e94560;
+                color: #fff;
+            }
+            .clear-sprites-btn {
+                background: transparent;
+                border: 1px solid #666;
+                color: #666;
+                padding: 2px 8px;
+                border-radius: 3px;
+                cursor: pointer;
+                font-size: 10px;
+            }
+            .clear-sprites-btn:hover {
+                border-color: #e94560;
+                color: #e94560;
+            }
+
+            /* Bottom Bar */
+            #editor-toolbar {
+                grid-column: 1 / -1;
+                background: #16213e;
+                padding: 10px 20px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-top: 1px solid #0f3460;
+            }
+            .toolbar-btn {
+                padding: 10px 25px;
+                font-size: 14px;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 600;
+            }
+            .toolbar-btn.primary {
+                background: #10ac84;
+                color: #fff;
+            }
+            .toolbar-btn.primary:hover {
+                background: #1dd1a1;
+            }
+            .toolbar-btn.secondary {
+                background: #555;
+                color: #fff;
+            }
+            .toolbar-btn.secondary:hover {
+                background: #777;
+            }
+            .toolbar-info {
+                color: #888;
+                font-size: 13px;
+            }
+
+            /* Sprite Sheet Editor */
+            #sprite-editor-screen {
+                display: none;
+                width: 100vw;
+                height: 100vh;
+            }
+            #sprite-editor-screen.active {
+                display: grid;
+                grid-template-columns: 250px 1fr 280px;
+                grid-template-rows: 1fr auto;
+            }
+            #sprite-sheets-panel {
+                background: #16213e;
+                padding: 15px;
+                overflow-y: auto;
+                border-right: 1px solid #0f3460;
+            }
+            .sheet-item {
+                padding: 10px;
+                background: #0f3460;
+                margin-bottom: 8px;
+                border-radius: 6px;
+                cursor: pointer;
+                border: 2px solid transparent;
+            }
+            .sheet-item:hover {
+                background: #1a4a7a;
+            }
+            .sheet-item.selected {
+                border-color: #e94560;
+            }
+            #sprite-canvas-panel {
+                background: #0f0f23;
+                position: relative;
+                overflow: hidden;
+            }
+            #sprite-sheet-canvas {
+                position: absolute;
+                top: 0;
+                left: 0;
+                cursor: crosshair;
+            }
+            .selection-box {
+                position: absolute;
+                border: 2px dashed #e94560;
+                background: rgba(233, 69, 96, 0.1);
+                pointer-events: none;
+            }
+            #sprite-info-panel {
+                background: #16213e;
+                padding: 15px;
+                overflow-y: auto;
+                border-left: 1px solid #0f3460;
+            }
+            .coord-input-group {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                margin-bottom: 15px;
+            }
+            .coord-input {
+                display: flex;
+                flex-direction: column;
+            }
+            .coord-input label {
+                font-size: 11px;
+                color: #888;
+                margin-bottom: 4px;
+            }
+            .coord-input input {
+                width: 100%;
+                padding: 8px;
+                background: #0f3460;
+                border: 1px solid #1a4a7a;
+                border-radius: 4px;
+                color: #fff;
+                font-size: 14px;
+            }
+            .coord-input input:focus {
+                outline: none;
+                border-color: #e94560;
+            }
+            .coord-buttons {
+                display: flex;
+                gap: 5px;
+                margin-top: 5px;
+            }
+            .coord-btn {
+                flex: 1;
+                padding: 5px;
+                background: #0f3460;
+                border: 1px solid #1a4a7a;
+                color: #fff;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+            }
+            .coord-btn:hover {
+                background: #1a4a7a;
+            }
+            #sprite-name-input {
+                width: 100%;
+                padding: 10px;
+                background: #0f3460;
+                border: 1px solid #1a4a7a;
+                border-radius: 4px;
+                color: #fff;
+                font-size: 14px;
+                margin-bottom: 10px;
+            }
+            #add-sprite-btn {
+                width: 100%;
+                padding: 10px;
+                background: #10ac84;
+                color: #fff;
+                border: none;
+                border-radius: 6px;
+                font-size: 14px;
+                cursor: pointer;
+                margin-bottom: 20px;
+            }
+            #add-sprite-btn:hover {
+                background: #1dd1a1;
+            }
+            .saved-sprite-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 8px 10px;
+                background: #0f3460;
+                margin-bottom: 5px;
+                border-radius: 4px;
+                font-size: 12px;
+            }
+            .saved-sprite-item:hover {
+                background: #1a4a7a;
+            }
+            .saved-sprite-item .sprite-info {
+                flex: 1;
+            }
+            .saved-sprite-item .sprite-name {
+                font-weight: 600;
+                margin-bottom: 2px;
+            }
+            .saved-sprite-item .sprite-coords {
+                font-size: 10px;
+                color: #888;
+            }
+            .saved-sprite-item button {
+                background: transparent;
+                border: 1px solid #e94560;
+                color: #e94560;
+                padding: 3px 8px;
+                border-radius: 3px;
+                cursor: pointer;
+                font-size: 10px;
+            }
+            .saved-sprite-item button:hover {
+                background: #e94560;
+                color: #fff;
+            }
+            #sprite-editor-toolbar {
+                grid-column: 1 / -1;
+                background: #16213e;
+                padding: 10px 20px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-top: 1px solid #0f3460;
+            }
+            #zoom-info {
+                color: #888;
+                font-size: 12px;
+            }
+            .sprite-preview-box {
+                width: 100%;
+                height: 80px;
+                background: #0f0f23;
+                border: 1px solid #1a4a7a;
+                border-radius: 4px;
+                margin-bottom: 15px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+            }
+            .sprite-preview-box img {
+                max-width: 100%;
+                max-height: 100%;
+                image-rendering: pixelated;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- Game Screen -->
+        <div id="game-screen" class="active">
+            <canvas id="game"></canvas>
+            <!-- Debug Panel -->
+            <div id="debug-panel">
+                <div class="debug-header">
+                    <span>Physics Tuning</span>
+                    <button id="debug-toggle">_</button>
+                </div>
+                <div class="debug-content">
+                    <div class="debug-row">
+                        <label>Centrifugal Force</label>
+                        <input
+                            type="range"
+                            id="param-centrifugal"
+                            min="0"
+                            max="100"
+                            value="30"
+                        />
+                        <span id="val-centrifugal">3.0</span>
+                    </div>
+                    <div class="debug-row">
+                        <label>Steering Rate</label>
+                        <input
+                            type="range"
+                            id="param-steering"
+                            min="10"
+                            max="100"
+                            value="30"
+                        />
+                        <span id="val-steering">3.0</span>
+                    </div>
+                    <div class="debug-row">
+                        <label>High Speed Steer Reduction</label>
+                        <input
+                            type="range"
+                            id="param-steer-speed"
+                            min="0"
+                            max="80"
+                            value="50"
+                        />
+                        <span id="val-steer-speed">0.50</span>
+                    </div>
+                    <div class="debug-row">
+                        <label>Max Speed</label>
+                        <input
+                            type="range"
+                            id="param-maxspeed"
+                            min="200"
+                            max="1000"
+                            value="600"
+                        />
+                        <span id="val-maxspeed">600</span>
+                    </div>
+                    <div class="debug-row">
+                        <label>Acceleration</label>
+                        <input
+                            type="range"
+                            id="param-accel"
+                            min="10"
+                            max="100"
+                            value="20"
+                        />
+                        <span id="val-accel">2.0</span>
+                    </div>
+                    <div class="debug-row">
+                        <label>Off-road Max Speed</label>
+                        <input
+                            type="range"
+                            id="param-offroad"
+                            min="50"
+                            max="400"
+                            value="200"
+                        />
+                        <span id="val-offroad">200</span>
+                    </div>
+                    <div class="debug-row">
+                        <label>Fog Density</label>
+                        <input
+                            type="range"
+                            id="param-fog"
+                            min="0"
+                            max="10"
+                            value="5"
+                        />
+                        <span id="val-fog">5</span>
+                    </div>
+                    <div
+                        class="debug-row"
+                        style="
+                            margin-top: 15px;
+                            border-top: 1px solid #0f3460;
+                            padding-top: 15px;
+                        "
+                    >
+                        <button
+                            id="random-track-btn"
+                            style="
+                                width: 100%;
+                                padding: 10px;
+                                background: #e94560;
+                                color: #fff;
+                                border: none;
+                                border-radius: 6px;
+                                font-size: 14px;
+                                cursor: pointer;
+                                font-weight: 600;
+                            "
+                        >
+                            Random Track
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Editor Screen -->
+        <div id="editor-screen">
+            <!-- Left Panel - Track Pieces -->
+            <div id="pieces-panel">
+                <div class="panel-title">Track Pieces</div>
+                <div id="pieces-list"></div>
+                <button id="add-piece-btn">+ Add Piece</button>
+            </div>
+
+            <!-- Center - Preview -->
+            <div id="preview-panel">
+                <!-- Top-down track view -->
+                <div id="preview-top-container">
+                    <canvas id="preview-canvas"></canvas>
+                    <div id="zoom-controls">
+                        <button class="zoom-btn" id="zoom-out">-</button>
+                        <div id="zoom-level">100%</div>
+                        <button class="zoom-btn" id="zoom-in">+</button>
+                        <button class="zoom-btn" id="zoom-fit">Fit</button>
+                    </div>
+
+                    <!-- 3D Preview Window -->
+                    <div id="preview-3d-container">
+                        <div id="preview-3d-header">
+                            <span>3D Preview</span>
+                        </div>
+                        <canvas id="preview-3d-canvas"></canvas>
+                        <div id="preview-3d-controls">
+                            <button
+                                class="preview-3d-btn"
+                                id="preview-3d-back"
+                                title="Move back"
+                            >
+                                &#9664;
+                            </button>
+                            <div id="preview-3d-position">0%</div>
+                            <button
+                                class="preview-3d-btn"
+                                id="preview-3d-forward"
+                                title="Move forward"
+                            >
+                                &#9654;
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Side elevation profile -->
+                <div id="preview-elevation-container">
+                    <span id="elevation-label">Elevation Profile</span>
+                    <canvas id="elevation-canvas"></canvas>
+                </div>
+            </div>
+
+            <!-- Right Panel - Properties -->
+            <div id="properties-panel">
+                <div class="panel-title">Properties</div>
+                <div id="piece-properties" style="display: none">
+                    <div class="property-group">
+                        <div class="property-label">Type</div>
+                        <select id="prop-type" class="property-input">
+                            <option value="straight">Straight</option>
+                            <option value="curve">Curve</option>
+                            <option value="hill">Hill</option>
+                        </select>
+                    </div>
+                    <div class="property-group">
+                        <div class="property-label">Length (segments)</div>
+                        <input
+                            type="range"
+                            id="prop-length"
+                            class="property-slider"
+                            min="10"
+                            max="200"
+                            value="50"
+                        />
+                        <div class="property-value" id="prop-length-value">
+                            50
+                        </div>
+                    </div>
+                    <div class="property-group" id="value-group">
+                        <div class="property-label" id="value-label">Value</div>
+                        <input
+                            type="range"
+                            id="prop-value"
+                            class="property-slider"
+                            min="-10"
+                            max="10"
+                            value="0"
+                        />
+                        <div class="property-value" id="prop-value-value">
+                            0
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-title" style="margin-top: 30px">Sprites</div>
+
+                <!-- Selected Sprite Editor (hidden by default) -->
+                <div
+                    class="sprite-editor"
+                    id="sprite-editor"
+                    style="display: none"
+                >
+                    <div class="sprite-editor-header">
+                        <span class="sprite-editor-title">Edit Sprite</span>
+                        <button
+                            class="sprite-editor-close"
+                            id="sprite-editor-close"
+                        >
+                            &times;
+                        </button>
+                    </div>
+                    <div class="sprite-editor-info">
+                        <span
+                            class="sprite-editor-icon"
+                            id="sprite-editor-icon"
+                        ></span>
+                        <div>
+                            <div
+                                class="sprite-editor-name"
+                                id="sprite-editor-name"
+                            ></div>
+                            <div class="sprite-editor-segment">
+                                Segment:
+                                <span id="sprite-editor-segment"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="property-group">
+                        <div class="property-label">Position (Left/Right)</div>
+                        <input
+                            type="range"
+                            id="sprite-edit-offset"
+                            class="property-slider"
+                            min="-20"
+                            max="20"
+                            value="0"
+                        />
+                        <div class="sprite-offset-preview">
+                            <span style="font-size: 10px; color: #666">L</span>
+                            <div class="offset-visual">
+                                <div class="offset-road"></div>
+                                <div
+                                    class="offset-marker"
+                                    id="sprite-edit-offset-marker"
+                                ></div>
+                            </div>
+                            <span style="font-size: 10px; color: #666">R</span>
+                        </div>
+                    </div>
+                    <div class="property-group">
+                        <div class="property-label">Move to Segment</div>
+                        <input
+                            type="number"
+                            id="sprite-edit-segment"
+                            class="property-input"
+                            min="0"
+                            value="0"
+                        />
+                    </div>
+                    <button
+                        class="toolbar-btn secondary"
+                        id="sprite-delete-btn"
+                        style="width: 100%; margin-top: 10px"
+                    >
+                        Delete Sprite
+                    </button>
+                </div>
+
+                <div class="sprite-placement-mode" id="sprite-mode-indicator">
+                    Click on track to place:
+                    <strong id="selected-sprite-name">Palm Tree</strong>
+                </div>
+
+                <div class="sprite-section">
+                    <div class="sprite-category">
+                        <div class="sprite-category-title">Trees</div>
+                        <div
+                            class="sprite-palette"
+                            id="sprite-palette-trees"
+                        ></div>
+                    </div>
+                    <div class="sprite-category">
+                        <div class="sprite-category-title">Vegetation</div>
+                        <div
+                            class="sprite-palette"
+                            id="sprite-palette-veg"
+                        ></div>
+                    </div>
+                    <div class="sprite-category">
+                        <div class="sprite-category-title">Objects</div>
+                        <div
+                            class="sprite-palette"
+                            id="sprite-palette-objects"
+                        ></div>
+                    </div>
+                    <div class="sprite-category">
+                        <div class="sprite-category-title">Billboards</div>
+                        <div
+                            class="sprite-palette"
+                            id="sprite-palette-billboards"
+                        ></div>
+                    </div>
+                </div>
+
+                <div class="property-group" style="margin-top: 15px">
+                    <div class="property-label">
+                        Position (Left/Right of Road)
+                    </div>
+                    <input
+                        type="range"
+                        id="sprite-offset"
+                        class="property-slider"
+                        min="-20"
+                        max="20"
+                        value="-15"
+                    />
+                    <div class="sprite-offset-preview">
+                        <span style="font-size: 10px; color: #666">L</span>
+                        <div class="offset-visual">
+                            <div class="offset-road"></div>
+                            <div class="offset-marker" id="offset-marker"></div>
+                        </div>
+                        <span style="font-size: 10px; color: #666">R</span>
+                    </div>
+                </div>
+
+                <div class="sprite-list" id="sprite-list">
+                    <div class="sprite-list-header">
+                        <div class="property-label">Placed Sprites</div>
+                        <span class="sprite-count" id="sprite-count">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Toolbar -->
+            <div id="editor-toolbar">
+                <div>
+                    <button class="toolbar-btn secondary" id="clear-btn">
+                        Clear Track
+                    </button>
+                    <button class="toolbar-btn secondary" id="load-btn">
+                        Load
+                    </button>
+                    <button class="toolbar-btn secondary" id="save-btn">
+                        Save
+                    </button>
+                </div>
+                <div class="toolbar-info" id="track-info">0 segments</div>
+                <button class="toolbar-btn primary" id="play-btn">
+                    Play Track
+                </button>
+            </div>
+        </div>
+
+        <!-- Sprite Sheet Editor Screen -->
+        <div id="sprite-editor-screen">
+            <!-- Left Panel - Sprite Sheets List -->
+            <div id="sprite-sheets-panel">
+                <div class="panel-title">Sprite Sheets</div>
+                <div id="sprite-sheets-list"></div>
+            </div>
+
+            <!-- Center - Canvas -->
+            <div id="sprite-canvas-panel">
+                <canvas id="sprite-sheet-canvas"></canvas>
+                <div
+                    class="selection-box"
+                    id="selection-box"
+                    style="display: none"
+                ></div>
+                <div id="zoom-controls" style="z-index: 30">
+                    <button class="zoom-btn" id="sprite-zoom-out">-</button>
+                    <div id="sprite-zoom-level">100%</div>
+                    <button class="zoom-btn" id="sprite-zoom-in">+</button>
+                    <button class="zoom-btn" id="sprite-zoom-fit">Fit</button>
+                </div>
+            </div>
+
+            <!-- Right Panel - Sprite Info -->
+            <div id="sprite-info-panel">
+                <div class="panel-title">Selection</div>
+
+                <!-- Preview of current selection -->
+                <div class="sprite-preview-box" id="sprite-selection-preview">
+                    <span style="color: #666; font-size: 12px"
+                        >No selection</span
+                    >
+                </div>
+
+                <!-- Coordinate inputs -->
+                <div class="coord-input-group">
+                    <div class="coord-input">
+                        <label>X</label>
+                        <input type="number" id="sprite-x" value="0" min="0" />
+                        <div class="coord-buttons">
+                            <button
+                                class="coord-btn"
+                                data-field="sprite-x"
+                                data-delta="-1"
+                            >
+                                -
+                            </button>
+                            <button
+                                class="coord-btn"
+                                data-field="sprite-x"
+                                data-delta="1"
+                            >
+                                +
+                            </button>
+                        </div>
+                    </div>
+                    <div class="coord-input">
+                        <label>Y</label>
+                        <input type="number" id="sprite-y" value="0" min="0" />
+                        <div class="coord-buttons">
+                            <button
+                                class="coord-btn"
+                                data-field="sprite-y"
+                                data-delta="-1"
+                            >
+                                -
+                            </button>
+                            <button
+                                class="coord-btn"
+                                data-field="sprite-y"
+                                data-delta="1"
+                            >
+                                +
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="coord-input-group">
+                    <div class="coord-input">
+                        <label>Width</label>
+                        <input type="number" id="sprite-w" value="0" min="1" />
+                        <div class="coord-buttons">
+                            <button
+                                class="coord-btn"
+                                data-field="sprite-w"
+                                data-delta="-1"
+                            >
+                                -
+                            </button>
+                            <button
+                                class="coord-btn"
+                                data-field="sprite-w"
+                                data-delta="1"
+                            >
+                                +
+                            </button>
+                        </div>
+                    </div>
+                    <div class="coord-input">
+                        <label>Height</label>
+                        <input type="number" id="sprite-h" value="0" min="1" />
+                        <div class="coord-buttons">
+                            <button
+                                class="coord-btn"
+                                data-field="sprite-h"
+                                data-delta="-1"
+                            >
+                                -
+                            </button>
+                            <button
+                                class="coord-btn"
+                                data-field="sprite-h"
+                                data-delta="1"
+                            >
+                                +
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sprite name and add button -->
+                <div class="property-group">
+                    <div class="property-label">Sprite Name</div>
+                    <input
+                        type="text"
+                        id="sprite-name-input"
+                        placeholder="Enter sprite name..."
+                    />
+                </div>
+                <button id="add-sprite-btn">Add to List</button>
+
+                <!-- Saved sprites list -->
+                <div class="panel-title" style="margin-top: 20px">
+                    Saved Sprites
+                </div>
+                <div id="saved-sprites-list"></div>
+            </div>
+
+            <!-- Bottom Toolbar -->
+            <div id="sprite-editor-toolbar">
+                <div>
+                    <button
+                        class="toolbar-btn secondary"
+                        id="sprite-editor-back"
+                    >
+                        Back to Game
+                    </button>
+                </div>
+                <div id="zoom-info">Zoom: 100% | Position: 0, 0</div>
+                <div>
+                    <button
+                        class="toolbar-btn secondary"
+                        id="export-sprites-btn"
+                    >
+                        Export JSON
+                    </button>
+                    <button class="toolbar-btn primary" id="save-sprites-btn">
+                        Save
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <script type="module" src="/src/main.ts"></script>
+    </body>
+</html>

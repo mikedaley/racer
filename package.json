@@ -1,0 +1,21 @@
+{
+  "name": "race",
+  "version": "1.0.0",
+  "description": "OutRun-style 2D racing game",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "generate-spritesheet": "node scripts/generate-spritesheet.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "pngjs": "^7.0.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.0"
+  }
+}
