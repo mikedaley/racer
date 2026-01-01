@@ -29,10 +29,12 @@ import {
 // Shader sources (inline for simplicity)
 const SKY_VERT = `#version 300 es
 in vec2 a_position;
+in vec2 a_uv;
 out vec2 v_uv;
+uniform mat4 u_projection;
 void main() {
-    v_uv = a_position * 0.5 + 0.5;
-    gl_Position = vec4(a_position, 0.0, 1.0);
+    v_uv = a_uv;
+    gl_Position = u_projection * vec4(a_position, 0.0, 1.0);
 }`;
 
 const SKY_FRAG = `#version 300 es
@@ -43,7 +45,8 @@ out vec4 fragColor;
 uniform vec3 u_colors[MAX_BANDS];
 uniform int u_bandCount;
 void main() {
-    float t = 1.0 - v_uv.y;
+    // v_uv.y goes from 0 (top) to 1 (horizon)
+    float t = v_uv.y;
     float bandSize = 1.0 / float(u_bandCount);
     int bandIndex = int(t / bandSize);
     bandIndex = min(bandIndex, u_bandCount - 1);
@@ -210,6 +213,7 @@ export class WebGLRenderer {
     this.skyUniforms = getUniformLocations(gl, this.skyProgram, [
       "u_colors",
       "u_bandCount",
+      "u_projection",
     ]);
     this.roadUniforms = getUniformLocations(gl, this.roadProgram, [
       "u_projection",
@@ -221,7 +225,10 @@ export class WebGLRenderer {
     ]);
 
     // Get attribute locations
-    this.skyAttribs = getAttribLocations(gl, this.skyProgram, ["a_position"]);
+    this.skyAttribs = getAttribLocations(gl, this.skyProgram, [
+      "a_position",
+      "a_uv",
+    ]);
     this.roadAttribs = getAttribLocations(gl, this.roadProgram, [
       "a_position",
       "a_color",
@@ -283,15 +290,35 @@ export class WebGLRenderer {
   private createSkyBuffers(): void {
     const gl = this.gl;
 
-    // Fullscreen quad
+    // Sky quad from top (y=0) to horizon (y=height/2)
+    // Using screen-space coordinates with orthographic projection
+    const horizonY = this.retroHeight / 2;
+
+    // Positions: top-left, top-right, bottom-left, bottom-left, top-right, bottom-right
     const positions = new Float32Array([
-      -1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1,
+      0,
+      0,
+      this.retroWidth,
+      0,
+      0,
+      horizonY,
+      0,
+      horizonY,
+      this.retroWidth,
+      0,
+      this.retroWidth,
+      horizonY,
     ]);
 
+    // UVs: 0 at top, 1 at horizon
+    const uvs = new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]);
+
     const posBuffer = createBuffer(gl, positions);
+    const uvBuffer = createBuffer(gl, uvs);
 
     this.skyVAO = gl.createVertexArray()!;
     gl.bindVertexArray(this.skyVAO);
+
     gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
     gl.enableVertexAttribArray(this.skyAttribs.a_position);
     gl.vertexAttribPointer(
@@ -302,6 +329,11 @@ export class WebGLRenderer {
       0,
       0,
     );
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
+    gl.enableVertexAttribArray(this.skyAttribs.a_uv);
+    gl.vertexAttribPointer(this.skyAttribs.a_uv, 2, gl.FLOAT, false, 0, 0);
+
     gl.bindVertexArray(null);
   }
 
@@ -609,6 +641,11 @@ export class WebGLRenderer {
     const gl = this.gl;
 
     gl.useProgram(this.skyProgram);
+    gl.uniformMatrix4fv(
+      this.skyUniforms.u_projection,
+      false,
+      this.projectionMatrix,
+    );
     gl.bindVertexArray(this.skyVAO);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
     gl.bindVertexArray(null);
