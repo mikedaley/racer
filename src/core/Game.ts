@@ -370,43 +370,11 @@ export class Game {
     // Car follows the road surface
     this.playerY = roadY;
 
-    // Collision detection against sprites
-    this.checkSpriteCollisions(playerSegment);
-
     while (this.position >= this.track.trackLength) {
       this.position -= this.track.trackLength;
     }
     while (this.position < 0) {
       this.position += this.track.trackLength;
-    }
-  }
-
-  private checkSpriteCollisions(playerSegment: {
-    sprites: { type: string; offset: number }[];
-  }): void {
-    // Only check collisions if moving
-    if (this.player.speed <= 0) return;
-
-    // Player collision width (how wide the car is in road coordinates)
-    const playerWidth = 0.3;
-
-    // Check sprites on the player's segment
-    for (const sprite of playerSegment.sprites) {
-      // Sprite offset is in road coordinates (-2 to 2 range, road is -1 to 1)
-      // Player x is also in this coordinate system
-      const spriteX = sprite.offset;
-
-      // Check if player overlaps with sprite
-      const distance = Math.abs(this.player.x - spriteX);
-
-      // Collision threshold - sprite has some width too
-      const collisionThreshold = playerWidth + 0.2;
-
-      if (distance < collisionThreshold) {
-        // Collision detected - stop the car
-        this.player.speed = 0;
-        break;
-      }
     }
   }
 
