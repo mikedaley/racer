@@ -106,6 +106,10 @@ export class Minimap {
     const segments = track.segments;
     this.trackPoints = [];
 
+    // Normalize step size so total track length is consistent regardless of segment count
+    const targetTotalLength = 1000;
+    const step = targetTotalLength / segments.length;
+
     let x = 0;
     let y = 0;
     let direction = 0;
@@ -118,7 +122,6 @@ export class Minimap {
       direction += curve * 0.008;
 
       // Move forward in current direction
-      const step = 2;
       x += Math.sin(direction) * step;
       y -= Math.cos(direction) * step;
 
@@ -128,11 +131,13 @@ export class Minimap {
     // Calculate bounds
     this.bounds = this.calculateBounds(this.trackPoints);
 
-    // Calculate scale to always fit height, allow horizontal overflow
+    // Scale to fit minimap dimensions
     const { width, height, padding } = this.config;
     const drawWidth = width - padding * 2;
     const drawHeight = height - padding * 2;
-    this.scale = this.bounds.height > 0 ? drawHeight / this.bounds.height : 1;
+    const scaleX = this.bounds.width > 0 ? drawWidth / this.bounds.width : 1;
+    const scaleY = this.bounds.height > 0 ? drawHeight / this.bounds.height : 1;
+    this.scale = Math.min(scaleX, scaleY);
 
     // Center the track
     this.offsetX =
