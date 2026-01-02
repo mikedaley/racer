@@ -143,7 +143,7 @@ export class Minimap {
       const curve = segment.curve;
 
       // Update direction based on curve (scaled to match actual track feel)
-      direction += curve * 0.003;
+      direction += curve * 0.008;
 
       // Move forward in current direction
       const step = 2;
