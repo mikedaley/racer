@@ -333,12 +333,26 @@ export class Track {
   }
 
   private calculateYPositions(): void {
+    // First pass: calculate raw Y positions
     let y = 0;
     for (let i = 0; i < this.segments.length; i++) {
       const segment = this.segments[i];
       segment.p1.world.y = y;
       y += segment.hill;
       segment.p2.world.y = y;
+    }
+
+    // Second pass: adjust so end matches start (y=0)
+    // Distribute the correction evenly across all segments
+    const endY = this.segments[this.segments.length - 1].p2.world.y;
+    if (endY !== 0) {
+      const correction = endY / this.segments.length;
+      let cumulativeCorrection = 0;
+      for (let i = 0; i < this.segments.length; i++) {
+        this.segments[i].p1.world.y -= cumulativeCorrection;
+        cumulativeCorrection += correction;
+        this.segments[i].p2.world.y -= cumulativeCorrection;
+      }
     }
   }
 
