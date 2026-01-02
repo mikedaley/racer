@@ -1127,13 +1127,13 @@ export class WebGLRenderer {
     const playerColor = { r: 0, g: 255, b: 0 }; // Green for player collision box
 
     // Render collision boxes for sprites on nearby segments
-    for (let n = 0; n < Math.min(segmentCount, 20); n++) {
+    for (let n = 0; n < Math.min(segmentCount, 30); n++) {
       const segmentData = this.segmentDataPool[n];
       const segment = segmentData.segment;
       if (!segment) continue;
 
       const scale = segment.p1.scale;
-      if (scale <= 0) continue;
+      if (scale <= 0.001) continue;
 
       for (const sprite of segment.sprites) {
         // Calculate sprite screen position (same as in renderSprites)
@@ -1143,12 +1143,12 @@ export class WebGLRenderer {
         const spriteScreenY = segment.p1.screen.y;
 
         // Calculate collision box width in screen space
-        const collisionWidth =
-          (scale * this.SPRITE_WIDTH * this.roadWidth * this.width) / 2;
-        const boxHeight = 20 * scale; // Arbitrary height for visibility
+        // Use road width scaling similar to how sprites are positioned
+        const collisionWidth = segment.p1.screen.w * this.SPRITE_WIDTH * 2;
+        const boxHeight = Math.max(10, 50 * scale); // Visible height
 
         // Draw collision box outline (4 lines = 4 quads)
-        const lineWidth = 2;
+        const lineWidth = Math.max(1, 2 * scale);
         const x1 = spriteScreenX - collisionWidth;
         const x2 = spriteScreenX + collisionWidth;
         const y1 = spriteScreenY - boxHeight;
@@ -1214,17 +1214,16 @@ export class WebGLRenderer {
     }
 
     // Draw player collision box at bottom of screen
-    const playerScale = this.width / PLAYER.SCALE_BASE;
     const playerScreenX = this.width / 2; // Player is always centered on screen
-    const playerCollisionWidth = this.PLAYER_WIDTH * this.roadWidth * 0.05; // Scale for visibility
-    const playerBoxHeight = 30;
-    const playerY = this.height - 50;
+    const playerCollisionWidth = 30; // Fixed visible width in pixels
+    const playerBoxHeight = 40;
+    const playerY = this.height - 45;
 
     const px1 = playerScreenX - playerCollisionWidth;
     const px2 = playerScreenX + playerCollisionWidth;
     const py1 = playerY - playerBoxHeight;
     const py2 = playerY;
-    const lineWidth = 2;
+    const pLineWidth = 2;
 
     // Player box outline
     vertexCount = this.addQuad(
@@ -1234,32 +1233,19 @@ export class WebGLRenderer {
       px2,
       py1,
       px2,
-      py1 + lineWidth,
+      py1 + pLineWidth,
       px1,
-      py1 + lineWidth,
+      py1 + pLineWidth,
       playerColor,
       0,
     );
     vertexCount = this.addQuad(
       vertexCount,
       px1,
-      py2 - lineWidth,
+      py2 - pLineWidth,
       px2,
-      py2 - lineWidth,
+      py2 - pLineWidth,
       px2,
-      py2,
-      px1,
-      py2,
-      playerColor,
-      0,
-    );
-    vertexCount = this.addQuad(
-      vertexCount,
-      px1,
-      py1,
-      px1 + lineWidth,
-      py1,
-      px1 + lineWidth,
       py2,
       px1,
       py2,
@@ -1268,13 +1254,26 @@ export class WebGLRenderer {
     );
     vertexCount = this.addQuad(
       vertexCount,
-      px2 - lineWidth,
+      px1,
+      py1,
+      px1 + pLineWidth,
+      py1,
+      px1 + pLineWidth,
+      py2,
+      px1,
+      py2,
+      playerColor,
+      0,
+    );
+    vertexCount = this.addQuad(
+      vertexCount,
+      px2 - pLineWidth,
       py1,
       px2,
       py1,
       px2,
       py2,
-      px2 - lineWidth,
+      px2 - pLineWidth,
       py2,
       playerColor,
       0,
