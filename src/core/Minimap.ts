@@ -25,7 +25,7 @@ const DEFAULT_CONFIG: MinimapConfig = {
   fadeDistance: 400,
   trackColor: "#ffffff",
   playerColor: "#ff0000",
-  backgroundColor: "rgba(0, 0, 0, 0.5)",
+  backgroundColor: "transparent",
 };
 
 export class Minimap {
@@ -59,9 +59,8 @@ export class Minimap {
       this.config;
     const ctx = this.ctx;
 
-    // Clear with background
-    ctx.fillStyle = this.config.backgroundColor;
-    ctx.fillRect(0, 0, width, height);
+    // Clear canvas (transparent)
+    ctx.clearRect(0, 0, width, height);
 
     const segments = track.segments;
     const segmentLength = track.segmentLength;
@@ -71,8 +70,8 @@ export class Minimap {
     const currentSegmentIndex =
       Math.floor(playerPosition / segmentLength) % segments.length;
 
-    // Calculate visible range (less behind, more ahead)
-    const segmentsBehind = Math.floor(segmentsVisible * 0.2);
+    // Calculate visible range (minimal behind, mostly ahead for corner preview)
+    const segmentsBehind = Math.floor(segmentsVisible * 0.05);
     const segmentsAhead = segmentsVisible - segmentsBehind;
     const startOffset = -segmentsBehind;
     const endOffset = segmentsAhead;
