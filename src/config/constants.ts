@@ -14,11 +14,11 @@ export const RENDER: {
   SPRITE_SCALE: number;
 } = {
   /** Internal rendering width (retro resolution) */
-  RETRO_WIDTH: 512,
+  RETRO_WIDTH: 640,
   /** Internal rendering height (retro resolution) */
-  RETRO_HEIGHT: 384,
+  RETRO_HEIGHT: 480,
   /** Number of road segments to render ahead */
-  DRAW_DISTANCE: 300,
+  DRAW_DISTANCE: 350,
   /** Global sprite scale multiplier */
   SPRITE_SCALE: 4.0,
 };
