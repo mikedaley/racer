@@ -79,7 +79,7 @@ export const PHYSICS = {
   /** Default off-road maximum speed */
   DEFAULT_OFF_ROAD_MAX_SPEED: 200,
   /** Default centrifugal force multiplier */
-  DEFAULT_CENTRIFUGAL_FORCE: 0.9,
+  DEFAULT_CENTRIFUGAL_FORCE: 1.6,
   /** Default steering rate */
   DEFAULT_STEERING_RATE: 3.0,
   /** Default steering speed scale (reduces steering at high speed) */

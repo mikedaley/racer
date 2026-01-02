@@ -59,7 +59,7 @@ export class Game {
   private running = false;
 
   // Tunable physics parameters
-  private centrifugalForce = 3.0;
+  private centrifugalForce = 1.6;
   private steeringRate = 3.0;
   private steeringSpeedScale = 0.5;
 
