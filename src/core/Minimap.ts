@@ -211,12 +211,6 @@ export class Minimap {
       );
     }
 
-    // Close the loop back to start
-    ctx.lineTo(
-      firstPoint.x * this.scale + this.offsetX,
-      firstPoint.y * this.scale + this.offsetY,
-    );
-
     ctx.strokeStyle = this.colorWithAlpha(
       this.config.trackColor,
       this.config.trackAlpha,
