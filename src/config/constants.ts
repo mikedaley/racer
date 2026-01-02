@@ -18,7 +18,7 @@ export const RENDER: {
   /** Internal rendering height (retro resolution) */
   RETRO_HEIGHT: 480,
   /** Number of road segments to render ahead */
-  DRAW_DISTANCE: 350,
+  DRAW_DISTANCE: 300,
   /** Global sprite scale multiplier */
   SPRITE_SCALE: 4.0,
 };

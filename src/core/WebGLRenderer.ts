@@ -176,11 +176,6 @@ export class WebGLRenderer {
   cameraDepth = CAMERA.DEPTH;
   drawDistance = RENDER.DRAW_DISTANCE;
   fogDensity = FOG.DEFAULT_DENSITY;
-  debugCollisions = false; // Toggle to show collision bounding boxes
-
-  // Collision constants (must match Game.ts)
-  private readonly PLAYER_WIDTH = 0.3;
-  private readonly SPRITE_WIDTH = 0.2;
 
   constructor(canvas: HTMLCanvasElement, autoResize: boolean = true) {
     this.canvas = canvas;
@@ -609,15 +604,10 @@ export class WebGLRenderer {
     // 3. Render sprites (back to front)
     this.renderSprites(segmentCount);
 
-    // 4. Render debug collision boxes (if enabled)
-    if (this.debugCollisions) {
-      this.renderDebugCollisions(segmentCount, playerX);
-    }
-
-    // 5. Render player
+    // 4. Render player
     this.renderPlayer(steerDirection);
 
-    // 6. Scale up to display canvas
+    // 5. Scale up to display canvas
     this.displayCtx.drawImage(
       this.retroCanvas,
       0,
@@ -1112,124 +1102,6 @@ export class WebGLRenderer {
     vertexOffset++;
 
     return vertexOffset;
-  }
-
-  // ---------------------------------------------------------------------------
-  // DEBUG COLLISION RENDERING
-  // ---------------------------------------------------------------------------
-
-  private renderDebugCollisions(segmentCount: number, playerX: number): void {
-    const gl = this.gl;
-    let vertexCount = 0;
-
-    // Colors for debug boxes
-    const spriteColor = { r: 255, g: 0, b: 0 }; // Red for sprite collision boxes
-    const playerColor = { r: 0, g: 255, b: 0 }; // Green for player collision box
-
-    // Render collision boxes for sprites on nearby segments
-    for (let n = 0; n < Math.min(segmentCount, 30); n++) {
-      const segmentData = this.segmentDataPool[n];
-      const segment = segmentData.segment;
-      if (!segment) continue;
-
-      const scale = segment.p1.scale;
-      if (scale <= 0.001) continue;
-
-      for (const sprite of segment.sprites) {
-        // Calculate sprite screen position (same as in renderSprites)
-        const spriteScreenX =
-          segment.p1.screen.x +
-          (scale * sprite.offset * this.roadWidth * this.width) / 2;
-        const spriteScreenY = segment.p1.screen.y;
-
-        // Calculate collision box width in screen space
-        const collisionWidth = segment.p1.screen.w * this.SPRITE_WIDTH * 2;
-        const boxHeight = Math.max(10, 50 * scale);
-
-        const x1 = spriteScreenX - collisionWidth;
-        const x2 = spriteScreenX + collisionWidth;
-        const y1 = spriteScreenY - boxHeight;
-        const y2 = spriteScreenY;
-
-        // Draw filled collision box
-        vertexCount = this.addQuad(
-          vertexCount,
-          x1,
-          y1,
-          x2,
-          y1,
-          x2,
-          y2,
-          x1,
-          y2,
-          spriteColor,
-          0,
-        );
-      }
-    }
-
-    // Draw player collision box at bottom of screen
-    const playerScreenX = this.width / 2;
-    const playerCollisionWidth = 30;
-    const playerBoxHeight = 40;
-    const playerY = this.height - 45;
-
-    const px1 = playerScreenX - playerCollisionWidth;
-    const px2 = playerScreenX + playerCollisionWidth;
-    const py1 = playerY - playerBoxHeight;
-    const py2 = playerY;
-
-    // Draw filled player box
-    vertexCount = this.addQuad(
-      vertexCount,
-      px1,
-      py1,
-      px2,
-      py1,
-      px2,
-      py2,
-      px1,
-      py2,
-      playerColor,
-      0,
-    );
-
-    if (vertexCount === 0) return;
-
-    // Render using road shader
-    gl.useProgram(this.roadProgram);
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.roadPositionBuffer);
-    gl.bufferSubData(
-      gl.ARRAY_BUFFER,
-      0,
-      this.roadPositions.subarray(0, vertexCount * 2),
-    );
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.roadColorBuffer);
-    gl.bufferSubData(
-      gl.ARRAY_BUFFER,
-      0,
-      this.roadColors.subarray(0, vertexCount * 3),
-    );
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.roadFogBuffer);
-    gl.bufferSubData(
-      gl.ARRAY_BUFFER,
-      0,
-      this.roadFogAmounts.subarray(0, vertexCount),
-    );
-
-    gl.uniformMatrix4fv(
-      this.roadUniforms.u_projection,
-      false,
-      this.projectionMatrix,
-    );
-    gl.uniform3f(this.roadUniforms.u_fogColor, 0, 0, 0);
-
-    gl.bindVertexArray(this.roadVAO);
-    gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
-    gl.bindVertexArray(null);
   }
 
   // ---------------------------------------------------------------------------
