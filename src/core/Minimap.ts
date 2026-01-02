@@ -95,19 +95,21 @@ export class Minimap {
     const scaleY = bounds.height > 0 ? drawHeight / bounds.height : 1;
     const scale = Math.min(scaleX, scaleY);
 
-    // Center offset
+    // Find player point to position it at bottom of minimap
+    const playerPt = points[segmentsBehind];
+    const playerScreenY = playerPt ? playerPt.y * scale : 0;
+
+    // Center horizontally, but align player near bottom
     const offsetX =
       padding + (drawWidth - bounds.width * scale) / 2 - bounds.minX * scale;
-    const offsetY =
-      padding + (drawHeight - bounds.height * scale) / 2 - bounds.minY * scale;
+    const offsetY = height - padding - 20 - playerScreenY;
 
     // Render track segments with fade
     this.renderTrackPath(points, scale, offsetX, offsetY, fadeDistance);
 
-    // Find and render player position
-    const playerPoint = this.findPlayerPoint(points, segmentsBehind);
-    if (playerPoint) {
-      this.renderPlayer(playerPoint, playerX, scale, offsetX, offsetY);
+    // Render player position
+    if (playerPt) {
+      this.renderPlayer(playerPt, playerX, scale, offsetX, offsetY);
     }
 
     return this.canvas;
