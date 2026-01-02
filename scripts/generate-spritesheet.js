@@ -7,7 +7,7 @@ import fs from "fs";
 import path from "path";
 import { PNG } from "pngjs";
 
-const SPRITES_DIR = "./src/images/sprites";
+const SPRITES_DIR = "./public/images/sprites";
 const OUTPUT_IMAGE = "./public/images/spritesheet.png";
 const OUTPUT_JSON = "./src/sprites/spritesheet-data.ts";
 const PADDING = 2;
@@ -147,7 +147,7 @@ async function main() {
       placement.x,
       placement.y,
       sprite.width,
-      sprite.height
+      sprite.height,
     );
   }
 
@@ -167,7 +167,9 @@ async function main() {
 
   const frameEntries = [];
   for (const [id, frame] of placements) {
-    frameEntries.push(`  ${id}: { x: ${frame.x}, y: ${frame.y}, w: ${frame.w}, h: ${frame.h} }`);
+    frameEntries.push(
+      `  ${id}: { x: ${frame.x}, y: ${frame.y}, w: ${frame.w}, h: ${frame.h} }`,
+    );
   }
 
   const tsContent = `/**
