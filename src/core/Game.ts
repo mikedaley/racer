@@ -409,14 +409,12 @@ export class Game {
     );
     ctx.fillText(`${speedMph} MPH`, 20, 50);
 
-    // Minimap (top-right corner)
+    // Minimap (left side, below speed)
     const minimapCanvas = this.minimap.render(
       this.track,
       this.position,
       this.player.x,
     );
-    const minimapX = canvas.width - minimapCanvas.width - 20;
-    const minimapY = 20;
-    ctx.drawImage(minimapCanvas, minimapX, minimapY);
+    ctx.drawImage(minimapCanvas, 20, 70);
   }
 }
