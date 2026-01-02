@@ -573,8 +573,9 @@ export class WebGLRenderer {
       const camZ = position - (looped ? track.trackLength : 0);
       const camY = camPlayerY + this.cameraHeight;
 
-      this.project(segment.p1, playerX * this.roadWidth - x, camY, camZ);
-      this.project(segment.p2, playerX * this.roadWidth - x - dx, camY, camZ);
+      const cameraXShift = playerX * this.roadWidth * 1.5;
+      this.project(segment.p1, cameraXShift - x, camY, camZ);
+      this.project(segment.p2, cameraXShift - x - dx, camY, camZ);
 
       x += dx;
       dx += segment.curve;
