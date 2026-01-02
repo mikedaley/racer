@@ -7,7 +7,7 @@ precision mediump float;
 in vec2 v_uv;
 out vec4 fragColor;
 
-#define MAX_BANDS 20
+#define MAX_BANDS 30
 
 uniform vec3 u_colors[MAX_BANDS];
 uniform int u_bandCount;
