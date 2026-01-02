@@ -71,10 +71,11 @@ export class Minimap {
     const currentSegmentIndex =
       Math.floor(playerPosition / segmentLength) % segments.length;
 
-    // Calculate visible range (half behind, half ahead)
-    const halfVisible = Math.floor(segmentsVisible / 2);
-    const startOffset = -halfVisible;
-    const endOffset = halfVisible;
+    // Calculate visible range (less behind, more ahead)
+    const segmentsBehind = Math.floor(segmentsVisible * 0.2);
+    const segmentsAhead = segmentsVisible - segmentsBehind;
+    const startOffset = -segmentsBehind;
+    const endOffset = segmentsAhead;
 
     // Build path points from track segments
     const points = this.calculateTrackPoints(
@@ -105,7 +106,7 @@ export class Minimap {
     this.renderTrackPath(points, scale, offsetX, offsetY, fadeDistance);
 
     // Find and render player position
-    const playerPoint = this.findPlayerPoint(points, halfVisible);
+    const playerPoint = this.findPlayerPoint(points, segmentsBehind);
     if (playerPoint) {
       this.renderPlayer(playerPoint, playerX, scale, offsetX, offsetY);
     }
