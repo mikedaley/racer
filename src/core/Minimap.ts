@@ -128,13 +128,11 @@ export class Minimap {
     // Calculate bounds
     this.bounds = this.calculateBounds(this.trackPoints);
 
-    // Calculate scale and offsets to fit track in minimap
+    // Calculate scale to always fit height, allow horizontal overflow
     const { width, height, padding } = this.config;
     const drawWidth = width - padding * 2;
     const drawHeight = height - padding * 2;
-    const scaleX = this.bounds.width > 0 ? drawWidth / this.bounds.width : 1;
-    const scaleY = this.bounds.height > 0 ? drawHeight / this.bounds.height : 1;
-    this.scale = Math.min(scaleX, scaleY);
+    this.scale = this.bounds.height > 0 ? drawHeight / this.bounds.height : 1;
 
     // Center the track
     this.offsetX =
