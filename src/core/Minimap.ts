@@ -34,7 +34,7 @@ export class Minimap {
   private ctx: CanvasRenderingContext2D;
 
   // Cached track data
-  private cachedTrackLength = 0;
+  private cachedTrackId = 0;
   private trackPoints: TrackPoint[] = [];
   private bounds: {
     minX: number;
@@ -73,14 +73,8 @@ export class Minimap {
     const { width, height, padding } = this.config;
     const ctx = this.ctx;
 
-    // Rebuild track points if track changed (check trackLength as track object is reused)
-    if (
-      track.trackLength !== this.cachedTrackLength ||
-      this.trackPoints.length !== track.segments.length
-    ) {
-      this.buildTrackPoints(track);
-      this.cachedTrackLength = track.trackLength;
-    }
+    // Always rebuild track points (track object is reused with same length)
+    this.buildTrackPoints(track);
 
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
