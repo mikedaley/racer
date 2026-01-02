@@ -256,6 +256,10 @@ export class Game {
       window.removeEventListener("keydown", this.handleKeyDown);
       this.onExit();
     }
+    // Toggle debug collision boxes with 'C' key
+    if (e.key === "c" || e.key === "C") {
+      this.renderer.debugCollisions = !this.renderer.debugCollisions;
+    }
   }
 
   start(): void {
