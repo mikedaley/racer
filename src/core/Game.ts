@@ -1,6 +1,7 @@
 import { Track } from "./Track";
 import { WebGLRenderer } from "./WebGLRenderer";
 import { Input } from "./Input";
+import { Minimap } from "./Minimap";
 import { Player } from "../types/game";
 import { TrackData } from "../data/TrackData";
 
@@ -36,6 +37,7 @@ export class Game {
   private track: Track;
   private renderer: WebGLRenderer;
   private input: Input;
+  private minimap: Minimap;
   private onExit: (() => void) | null = null;
 
   private position = 0;
@@ -69,6 +71,7 @@ export class Game {
     this.track = new Track(trackData);
     this.renderer = new WebGLRenderer(canvas);
     this.input = new Input();
+    this.minimap = new Minimap();
     this.onExit = onExit || null;
 
     // Load saved physics settings
@@ -395,16 +398,25 @@ export class Game {
   }
 
   private renderHUD(): void {
-    // Access the display context through the renderer's private property
     const ctx = this.renderer["displayCtx"] as CanvasRenderingContext2D;
+    const canvas = ctx.canvas;
 
+    // Speed display
     ctx.fillStyle = "#ffffff";
     ctx.font = "40px monospace";
-
-    // Scale internal speed (0-600) to display MPH (0-120)
     const speedMph = Math.round(
       (this.player.speed / this.player.maxSpeed) * 120,
     );
     ctx.fillText(`${speedMph} MPH`, 20, 50);
+
+    // Minimap (top-right corner)
+    const minimapCanvas = this.minimap.render(
+      this.track,
+      this.position,
+      this.player.x,
+    );
+    const minimapX = canvas.width - minimapCanvas.width - 20;
+    const minimapY = 20;
+    ctx.drawImage(minimapCanvas, minimapX, minimapY);
   }
 }
