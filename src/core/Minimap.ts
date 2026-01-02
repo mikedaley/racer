@@ -1,7 +1,6 @@
 /**
  * Minimap Renderer
- * Displays a top-down view of the track with player position
- * Track sections fade based on distance from player
+ * Displays a top-down view of the entire track with player position
  */
 
 import { Track } from "./Track";
@@ -10,28 +9,44 @@ interface MinimapConfig {
   width: number;
   height: number;
   padding: number;
-  segmentsVisible: number;
-  fadeDistance: number;
   trackColor: string;
+  trackAlpha: number;
   playerColor: string;
-  backgroundColor: string;
 }
 
 const DEFAULT_CONFIG: MinimapConfig = {
   width: 150,
   height: 350,
   padding: 10,
-  segmentsVisible: 1000,
-  fadeDistance: 400,
   trackColor: "#ffffff",
+  trackAlpha: 0.6,
   playerColor: "#ff0000",
-  backgroundColor: "transparent",
 };
+
+interface TrackPoint {
+  x: number;
+  y: number;
+}
 
 export class Minimap {
   private config: MinimapConfig;
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
+
+  // Cached track data
+  private cachedTrack: Track | null = null;
+  private trackPoints: TrackPoint[] = [];
+  private bounds: {
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+    width: number;
+    height: number;
+  } | null = null;
+  private scale = 1;
+  private offsetX = 0;
+  private offsetY = 0;
 
   constructor(config: Partial<MinimapConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -55,94 +70,48 @@ export class Minimap {
     playerPosition: number,
     playerX: number,
   ): HTMLCanvasElement {
-    const { width, height, padding, segmentsVisible, fadeDistance } =
-      this.config;
+    const { width, height, padding } = this.config;
     const ctx = this.ctx;
 
-    // Clear canvas (transparent)
+    // Rebuild track points if track changed
+    if (track !== this.cachedTrack) {
+      this.buildTrackPoints(track);
+      this.cachedTrack = track;
+    }
+
+    // Clear canvas
     ctx.clearRect(0, 0, width, height);
 
-    const segments = track.segments;
+    // Render the entire track
+    this.renderTrack();
+
+    // Calculate player segment index and render player
     const segmentLength = track.segmentLength;
-    const trackLength = track.trackLength;
+    const playerSegmentIndex =
+      Math.floor(playerPosition / segmentLength) % track.segments.length;
+    const segmentProgress = (playerPosition % segmentLength) / segmentLength;
 
-    // Calculate current segment index
-    const currentSegmentIndex =
-      Math.floor(playerPosition / segmentLength) % segments.length;
-
-    // Calculate visible range (minimal behind, mostly ahead for corner preview)
-    const segmentsBehind = Math.floor(segmentsVisible * 0.05);
-    const segmentsAhead = segmentsVisible - segmentsBehind;
-    const startOffset = -segmentsBehind;
-    const endOffset = segmentsAhead;
-
-    // Build path points from track segments
-    const points = this.calculateTrackPoints(
-      segments,
-      currentSegmentIndex,
-      startOffset,
-      endOffset,
-      segmentLength,
-    );
-
-    // Find bounds for scaling
-    const bounds = this.calculateBounds(points);
-
-    // Calculate scale to fit within padded area
-    const drawWidth = width - padding * 2;
-    const drawHeight = height - padding * 2;
-    const scaleX = bounds.width > 0 ? drawWidth / bounds.width : 1;
-    const scaleY = bounds.height > 0 ? drawHeight / bounds.height : 1;
-    const scale = Math.min(scaleX, scaleY);
-
-    // Find player point to position it at bottom of minimap
-    const playerPt = points[segmentsBehind];
-    const playerScreenY = playerPt ? playerPt.y * scale : 0;
-
-    // Center horizontally, but align player near bottom
-    const offsetX =
-      padding + (drawWidth - bounds.width * scale) / 2 - bounds.minX * scale;
-    const offsetY = height - padding - 20 - playerScreenY;
-
-    // Render track segments with fade
-    this.renderTrackPath(points, scale, offsetX, offsetY, fadeDistance);
-
-    // Render player position
-    if (playerPt) {
-      this.renderPlayer(playerPt, playerX, scale, offsetX, offsetY);
-    }
+    this.renderPlayer(playerSegmentIndex, segmentProgress);
 
     return this.canvas;
   }
 
   /**
-   * Calculate track points from segments around the player
+   * Build track points from all segments (called once per track)
    */
-  private calculateTrackPoints(
-    segments: Track["segments"],
-    currentIndex: number,
-    startOffset: number,
-    endOffset: number,
-    segmentLength: number,
-  ): { x: number; y: number; distanceFromPlayer: number }[] {
-    const points: { x: number; y: number; distanceFromPlayer: number }[] = [];
-    const totalSegments = segments.length;
+  private buildTrackPoints(track: Track): void {
+    const segments = track.segments;
+    this.trackPoints = [];
 
     let x = 0;
     let y = 0;
     let direction = 0;
 
-    for (let offset = startOffset; offset <= endOffset; offset++) {
-      let segmentIndex = currentIndex + offset;
-
-      // Wrap around track
-      while (segmentIndex < 0) segmentIndex += totalSegments;
-      while (segmentIndex >= totalSegments) segmentIndex -= totalSegments;
-
-      const segment = segments[segmentIndex];
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
       const curve = segment.curve;
 
-      // Update direction based on curve (scaled to match actual track feel)
+      // Update direction based on curve
       direction += curve * 0.008;
 
       // Move forward in current direction
@@ -150,20 +119,35 @@ export class Minimap {
       x += Math.sin(direction) * step;
       y -= Math.cos(direction) * step;
 
-      points.push({
-        x,
-        y,
-        distanceFromPlayer: Math.abs(offset),
-      });
+      this.trackPoints.push({ x, y });
     }
 
-    return points;
+    // Calculate bounds
+    this.bounds = this.calculateBounds(this.trackPoints);
+
+    // Calculate scale and offsets to fit track in minimap
+    const { width, height, padding } = this.config;
+    const drawWidth = width - padding * 2;
+    const drawHeight = height - padding * 2;
+    const scaleX = this.bounds.width > 0 ? drawWidth / this.bounds.width : 1;
+    const scaleY = this.bounds.height > 0 ? drawHeight / this.bounds.height : 1;
+    this.scale = Math.min(scaleX, scaleY);
+
+    // Center the track
+    this.offsetX =
+      padding +
+      (drawWidth - this.bounds.width * this.scale) / 2 -
+      this.bounds.minX * this.scale;
+    this.offsetY =
+      padding +
+      (drawHeight - this.bounds.height * this.scale) / 2 -
+      this.bounds.minY * this.scale;
   }
 
   /**
    * Calculate bounding box of all points
    */
-  private calculateBounds(points: { x: number; y: number }[]): {
+  private calculateBounds(points: TrackPoint[]): {
     minX: number;
     maxX: number;
     minY: number;
@@ -187,7 +171,6 @@ export class Minimap {
       maxY = Math.max(maxY, point.y);
     }
 
-    // Add small margin to prevent edge clipping
     const margin = 5;
     minX -= margin;
     maxX += margin;
@@ -205,108 +188,69 @@ export class Minimap {
   }
 
   /**
-   * Render the track path with distance-based fading
+   * Render the entire track path
    */
-  private renderTrackPath(
-    points: { x: number; y: number; distanceFromPlayer: number }[],
-    scale: number,
-    offsetX: number,
-    offsetY: number,
-    fadeDistance: number,
-  ): void {
+  private renderTrack(): void {
     const ctx = this.ctx;
+    const points = this.trackPoints;
 
     if (points.length < 2) return;
 
-    // Draw segments individually for per-segment alpha
-    for (let i = 0; i < points.length - 1; i++) {
-      const p1 = points[i];
-      const p2 = points[i + 1];
+    ctx.beginPath();
+    const firstPoint = points[0];
+    ctx.moveTo(
+      firstPoint.x * this.scale + this.offsetX,
+      firstPoint.y * this.scale + this.offsetY,
+    );
 
-      // Calculate fade based on distance from player
-      const distance = Math.min(p1.distanceFromPlayer, p2.distanceFromPlayer);
-      const alpha = this.calculateFade(distance, fadeDistance);
-
-      if (alpha <= 0.05) continue;
-
-      const x1 = p1.x * scale + offsetX;
-      const y1 = p1.y * scale + offsetY;
-      const x2 = p2.x * scale + offsetX;
-      const y2 = p2.y * scale + offsetY;
-
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.strokeStyle = this.colorWithAlpha(this.config.trackColor, alpha);
-      ctx.lineWidth = 3;
-      ctx.lineCap = "round";
-      ctx.stroke();
+    for (let i = 1; i < points.length; i++) {
+      const p = points[i];
+      ctx.lineTo(
+        p.x * this.scale + this.offsetX,
+        p.y * this.scale + this.offsetY,
+      );
     }
+
+    // Close the loop back to start
+    ctx.lineTo(
+      firstPoint.x * this.scale + this.offsetX,
+      firstPoint.y * this.scale + this.offsetY,
+    );
+
+    ctx.strokeStyle = this.colorWithAlpha(
+      this.config.trackColor,
+      this.config.trackAlpha,
+    );
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.stroke();
   }
 
   /**
-   * Calculate fade alpha based on distance
+   * Render the player marker at current position
    */
-  private calculateFade(distance: number, fadeDistance: number): number {
-    if (distance <= fadeDistance * 0.5) {
-      return 1.0;
-    }
-    if (distance >= fadeDistance) {
-      return 0.0;
-    }
-    // Smooth fade in the outer half
-    const fadeStart = fadeDistance * 0.5;
-    const fadeRange = fadeDistance - fadeStart;
-    return 1.0 - (distance - fadeStart) / fadeRange;
-  }
-
-  /**
-   * Convert hex color to rgba with alpha
-   */
-  private colorWithAlpha(color: string, alpha: number): string {
-    // Handle hex colors
-    if (color.startsWith("#")) {
-      const r = parseInt(color.slice(1, 3), 16);
-      const g = parseInt(color.slice(3, 5), 16);
-      const b = parseInt(color.slice(5, 7), 16);
-      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-    }
-    return color;
-  }
-
-  /**
-   * Find the player's position point in the calculated path
-   */
-  private findPlayerPoint(
-    points: { x: number; y: number; distanceFromPlayer: number }[],
-    halfVisible: number,
-  ): { x: number; y: number } | null {
-    // Player is at the center of the visible range
-    const playerIndex = halfVisible;
-    if (playerIndex >= 0 && playerIndex < points.length) {
-      return points[playerIndex];
-    }
-    return null;
-  }
-
-  /**
-   * Render the player marker
-   */
-  private renderPlayer(
-    point: { x: number; y: number },
-    playerX: number,
-    scale: number,
-    offsetX: number,
-    offsetY: number,
-  ): void {
+  private renderPlayer(segmentIndex: number, progress: number): void {
     const ctx = this.ctx;
+    const points = this.trackPoints;
 
-    const x = point.x * scale + offsetX;
-    const y = point.y * scale + offsetY;
+    if (points.length === 0) return;
+
+    // Get current and next point for interpolation
+    const currentPoint = points[segmentIndex];
+    const nextIndex = (segmentIndex + 1) % points.length;
+    const nextPoint = points[nextIndex];
+
+    // Interpolate position
+    const x = currentPoint.x + (nextPoint.x - currentPoint.x) * progress;
+    const y = currentPoint.y + (nextPoint.y - currentPoint.y) * progress;
+
+    const screenX = x * this.scale + this.offsetX;
+    const screenY = y * this.scale + this.offsetY;
 
     // Draw player dot
     ctx.beginPath();
-    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.arc(screenX, screenY, 5, 0, Math.PI * 2);
     ctx.fillStyle = this.config.playerColor;
     ctx.fill();
 
@@ -314,5 +258,18 @@ export class Minimap {
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 1.5;
     ctx.stroke();
+  }
+
+  /**
+   * Convert hex color to rgba with alpha
+   */
+  private colorWithAlpha(color: string, alpha: number): string {
+    if (color.startsWith("#")) {
+      const r = parseInt(color.slice(1, 3), 16);
+      const g = parseInt(color.slice(3, 5), 16);
+      const b = parseInt(color.slice(5, 7), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+    return color;
   }
 }
