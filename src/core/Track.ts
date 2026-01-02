@@ -124,20 +124,18 @@ export class Track {
   }
 
   /**
-   * Generate a random procedural track
+   * Generate a random procedural track with fixed length
    */
   buildRandomTrack(): void {
     this.segments = [];
     this.currentPieces = []; // Reset pieces for export
 
-    // Track generation parameters
-    const minSections = 12;
-    const maxSections = 20;
-    const numSections =
-      minSections + Math.floor(Math.random() * (maxSections - minSections));
+    // Fixed total track length in segments
+    const TARGET_SEGMENTS = 800;
+    let remainingSegments = TARGET_SEGMENTS;
 
     // Start with a straight section
-    const startLength = 30 + Math.floor(Math.random() * 30);
+    const startLength = 40;
     this.currentPieces.push({
       id: generateId(),
       type: "straight",
@@ -145,13 +143,35 @@ export class Track {
       value: 0,
     });
     this.addStraight(startLength);
+    remainingSegments -= startLength;
 
-    for (let i = 0; i < numSections; i++) {
+    // Reserve segments for end straight
+    const endLength = 40;
+    remainingSegments -= endLength;
+
+    // Generate random sections until we've used up remaining segments
+    while (remainingSegments > 0) {
       const sectionType = Math.random();
+
+      // Calculate section length (use remaining if it's the last section)
+      const maxLength = Math.min(remainingSegments, 80);
+      if (maxLength < 20) {
+        // Add remaining as straight
+        this.currentPieces.push({
+          id: generateId(),
+          type: "straight",
+          length: remainingSegments,
+          value: 0,
+        });
+        this.addStraight(remainingSegments);
+        remainingSegments = 0;
+        break;
+      }
+
+      const length = 20 + Math.floor(Math.random() * (maxLength - 20));
 
       if (sectionType < 0.3) {
         // Straight section (30%)
-        const length = 30 + Math.floor(Math.random() * 50);
         this.currentPieces.push({
           id: generateId(),
           type: "straight",
@@ -161,7 +181,6 @@ export class Track {
         this.addStraight(length);
       } else if (sectionType < 0.6) {
         // Curve section (30%)
-        const length = 30 + Math.floor(Math.random() * 50);
         const intensity = Math.random() * 6 - 3; // -3 to 3
         this.currentPieces.push({
           id: generateId(),
@@ -172,7 +191,6 @@ export class Track {
         this.addCurve(length, intensity);
       } else if (sectionType < 0.85) {
         // Hill section (25%)
-        const length = 40 + Math.floor(Math.random() * 80);
         const height = Math.random() * 300 - 150; // -150 to 150
         this.currentPieces.push({
           id: generateId(),
@@ -182,8 +200,7 @@ export class Track {
         });
         this.addHill(length, height);
       } else {
-        // Combined curve + hill (15%) - store as two separate pieces for editor
-        const length = 40 + Math.floor(Math.random() * 60);
+        // Combined curve + hill (15%)
         const curveIntensity = Math.random() * 4 - 2; // -2 to 2
         const hillHeight = Math.random() * 200 - 100; // -100 to 100
         this.currentPieces.push({
@@ -200,10 +217,11 @@ export class Track {
         });
         this.addCurveWithHill(length, curveIntensity, hillHeight);
       }
+
+      remainingSegments -= length;
     }
 
     // End with a straight section
-    const endLength = 40 + Math.floor(Math.random() * 40);
     this.currentPieces.push({
       id: generateId(),
       type: "straight",

@@ -415,6 +415,6 @@ export class Game {
       this.position,
       this.player.x,
     );
-    ctx.drawImage(minimapCanvas, 10, 30);
+    ctx.drawImage(minimapCanvas, 10, 80);
   }
 }
