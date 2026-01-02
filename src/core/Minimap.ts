@@ -50,8 +50,13 @@ export class Minimap {
   /**
    * Render the minimap and return the canvas for compositing
    */
-  render(track: Track, playerPosition: number, playerX: number): HTMLCanvasElement {
-    const { width, height, padding, segmentsVisible, fadeDistance } = this.config;
+  render(
+    track: Track,
+    playerPosition: number,
+    playerX: number,
+  ): HTMLCanvasElement {
+    const { width, height, padding, segmentsVisible, fadeDistance } =
+      this.config;
     const ctx = this.ctx;
 
     // Clear with background
@@ -63,7 +68,8 @@ export class Minimap {
     const trackLength = track.trackLength;
 
     // Calculate current segment index
-    const currentSegmentIndex = Math.floor(playerPosition / segmentLength) % segments.length;
+    const currentSegmentIndex =
+      Math.floor(playerPosition / segmentLength) % segments.length;
 
     // Calculate visible range (half behind, half ahead)
     const halfVisible = Math.floor(segmentsVisible / 2);
@@ -76,7 +82,7 @@ export class Minimap {
       currentSegmentIndex,
       startOffset,
       endOffset,
-      segmentLength
+      segmentLength,
     );
 
     // Find bounds for scaling
@@ -90,8 +96,10 @@ export class Minimap {
     const scale = Math.min(scaleX, scaleY);
 
     // Center offset
-    const offsetX = padding + (drawWidth - bounds.width * scale) / 2 - bounds.minX * scale;
-    const offsetY = padding + (drawHeight - bounds.height * scale) / 2 - bounds.minY * scale;
+    const offsetX =
+      padding + (drawWidth - bounds.width * scale) / 2 - bounds.minX * scale;
+    const offsetY =
+      padding + (drawHeight - bounds.height * scale) / 2 - bounds.minY * scale;
 
     // Render track segments with fade
     this.renderTrackPath(points, scale, offsetX, offsetY, fadeDistance);
@@ -113,7 +121,7 @@ export class Minimap {
     currentIndex: number,
     startOffset: number,
     endOffset: number,
-    segmentLength: number
+    segmentLength: number,
   ): { x: number; y: number; distanceFromPlayer: number }[] {
     const points: { x: number; y: number; distanceFromPlayer: number }[] = [];
     const totalSegments = segments.length;
@@ -132,8 +140,8 @@ export class Minimap {
       const segment = segments[segmentIndex];
       const curve = segment.curve;
 
-      // Update direction based on curve
-      direction += curve * 0.02;
+      // Update direction based on curve (scaled to match actual track feel)
+      direction += curve * 0.003;
 
       // Move forward in current direction
       const step = 2;
@@ -202,7 +210,7 @@ export class Minimap {
     scale: number,
     offsetX: number,
     offsetY: number,
-    fadeDistance: number
+    fadeDistance: number,
   ): void {
     const ctx = this.ctx;
 
@@ -269,7 +277,7 @@ export class Minimap {
    */
   private findPlayerPoint(
     points: { x: number; y: number; distanceFromPlayer: number }[],
-    halfVisible: number
+    halfVisible: number,
   ): { x: number; y: number } | null {
     // Player is at the center of the visible range
     const playerIndex = halfVisible;
@@ -287,7 +295,7 @@ export class Minimap {
     playerX: number,
     scale: number,
     offsetX: number,
-    offsetY: number
+    offsetY: number,
   ): void {
     const ctx = this.ctx;
 
