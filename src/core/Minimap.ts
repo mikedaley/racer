@@ -19,7 +19,7 @@ interface MinimapConfig {
 
 const DEFAULT_CONFIG: MinimapConfig = {
   width: 150,
-  height: 200,
+  height: 350,
   padding: 10,
   segmentsVisible: 1000,
   fadeDistance: 400,
